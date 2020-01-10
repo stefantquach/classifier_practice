@@ -2,7 +2,7 @@ from __future__ import print_function
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.layers import Dense, Conv2D, BatchNormalization, Activation
-from tensorflow.keras.layers import AveragePooling2D, Input, Flatten
+from tensorflow.keras.layers import AveragePooling2D, Input, Flatten, Dropout
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler
 from tensorflow.keras.callbacks import ReduceLROnPlateau
@@ -108,6 +108,7 @@ def resnet_layer(inputs,
                  strides=1,
                  activation='relu',
                  batch_normalization=True,
+                 dropout=0.0,
                  conv_first=True):
     """2D Convolution-Batch Normalization-Activation stack builder
 
@@ -134,6 +135,8 @@ def resnet_layer(inputs,
     x = inputs
     if conv_first:
         x = conv(x)
+        if dropout is not 0.0:
+            x = Dropout(dropout)(x)
         if batch_normalization:
             x = BatchNormalization()(x)
         if activation is not None:
@@ -144,6 +147,8 @@ def resnet_layer(inputs,
         if activation is not None:
             x = Activation(activation)(x)
         x = conv(x)
+        if dropout is not 0.0:
+            x = Dropout(dropout)(x)
     return x
 
 
@@ -191,6 +196,7 @@ def resnet_v1(input_shape, depth, num_classes=10):
                 strides = 2  # downsample
             y = resnet_layer(inputs=x,
                              num_filters=num_filters,
+                             dropout=0.3,
                              strides=strides)
             y = resnet_layer(inputs=y,
                              num_filters=num_filters,
@@ -337,7 +343,7 @@ filepath = os.path.join(save_dir, model_name)
 
 # Prepare callbacks for model saving and for learning rate adjustment.
 checkpoint = ModelCheckpoint(filepath=filepath,
-                             monitor='val_acc',
+                             monitor='val_accuracy',
                              verbose=1,
                              save_best_only=True)
 
@@ -416,7 +422,7 @@ else:
                         epochs=epochs, verbose=1, workers=1,
                         callbacks=callbacks)
 
-model.save('./saved_models/resnet20v1_no_mean.h5')
+model.save('./saved_models/'+model_type+'_no_mean.h5')
 # model = keras.models.load_model('./saved_models/keras_cifar10_trained_model.h5')
 
 # Score trained model.
